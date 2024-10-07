@@ -1,0 +1,42 @@
+name: Download, Convert, Split, and Upload Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: URL of the video file
+        required: true
+        default: https://example.com/video.mp4
+      output_name:
+        description: Name of the output video file
+        required: true
+        default: output_video.mp4
+
+jobs:
+  download-convert-split-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up FFmpeg
+      uses: FedericoCarboni/setup-ffmpeg@v3
+      with:
+        ffmpeg-version: 'release'
+
+    - name: Download video
+      run: |
+        curl -L -o input_video.mkv "${{ github.event.inputs.video_url }}"
+
+    - name: Convert and compress video to MP4 with H.264
+      run: ffmpeg -i input_video.mkv -f mp4 -c:v libx264 -b:v 4000k -c:a aac -fs 2G "${{ github.event.inputs.output_name }}"
+
+    - name: Split video into 1000 MB chunks
+      run: split -b 1000M ${{ github.event.inputs.output_name }} output_chunk_
+
+    - name: Upload split video chunks
+      uses: actions/upload-artifact@v3
+      with:
+        name: split-video-chunks
+        path: output_chunk_*

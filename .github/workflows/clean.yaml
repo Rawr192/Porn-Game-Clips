@@ -1,0 +1,37 @@
+name: Clean up workflow
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      owner:
+        description: 'Repository owner'
+        required: true
+        type: string
+      repo:
+        description: 'Repository name'
+        required: true
+        type: string
+      workflow:
+        description: 'Workflow file name (leave empty for all)'
+        required: false
+        type: string
+        default: ''
+      token:
+        description: 'GitHub token'
+        required: true
+        type: string
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Clean up workflow
+      uses: shanzhengliu/github-disabled-workflow-clean-action@v1
+      with:
+        delete-level: 'repo'
+        token: ${{ github.event.inputs.token || secrets.ACCESS_TOKEN }}
+        owner: ${{ github.event.inputs.owner || github.repository_owner }}
+        repo: ${{ github.event.inputs.repo || github.event.repository.name }}
+        workflow: ${{ github.event.inputs.workflow || '' }}

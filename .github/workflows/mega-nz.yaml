@@ -1,0 +1,73 @@
+name: Download from MEGA.nz
+
+on:
+  workflow_dispatch:
+    inputs:
+      mega_urls:
+        description: 'MEGA.nz URLs to download (up to 5, separated by commas)'
+        required: true
+      maximize_disk_space:
+        description: Maximize disk space. Check if getting out of disk space error
+        type: boolean
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Maximize disk space
+      if: inputs.maximize_disk_space
+      uses: easimon/maximize-build-space@v10
+      with:
+        remove-dotnet: true
+        remove-android: true
+        remove-haskell: true
+        remove-codeql: true
+        remove-docker-images: true
+        
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://mega.nz/linux/repo/xUbuntu_22.04/amd64/megacmd-xUbuntu_22.04_amd64.deb && sudo apt install "$PWD/megacmd-xUbuntu_22.04_amd64.deb"
+        sudo apt-get install -y coreutils
+        
+    - name: Download from MEGA.nz
+      run: |
+        IFS=',' read -ra URLS <<< "${{ inputs.mega_urls }}"
+        for url in "${URLS[@]}"; do
+          mega-get "$url"
+        done
+    
+    - name: List files
+      run: ls -la
+
+    - name: Process and upload files
+      run: |
+        shopt -s nullglob
+        for file in *; do
+          if [[ -f "$file" ]]; then
+            filesize=$(stat -c%s "$file")
+            if [ "$filesize" -gt 2000000000 ]; then
+              split -b 2000m "$file" "${file}."
+              for part in "${file}."*; do
+                echo "Uploading $part"
+                gh release upload "mega-downloads" "$part" --clobber
+              done
+              rm "$file"
+            else
+              echo "Uploading $file"
+              gh release upload "mega-downloads" "./$file" --clobber
+            fi
+          fi
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+
+    - name: List files after processing
+      run: ls -la

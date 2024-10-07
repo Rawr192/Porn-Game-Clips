@@ -1,0 +1,135 @@
+name: Torrent Seeder
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Continue seeding the torrent after upload?'
+        required: true
+        default: 'false'
+        type: boolean
+      comment:
+        description: 'Comment'
+        required: true
+        default: 'Firefox Setup 122.0.1 win64 en-US by torrent-webseed-creator'
+      owner:
+        description: 'GitHub owner (username or organization)'
+        required: true
+        default: '12'
+      repo:
+        description: 'GitHub repository name'
+        required: true
+        default: '12'
+      release_tag:
+        description: 'Release tag or version number'
+        required: true
+        default: '12'
+      file_name:
+        description: 'File name of the folder in the torrent'
+        required: true
+        default: 'Firefox Setup 122.0.1'
+      piece_size:
+        description: 'Piece Size. Use auto for automatic calculation, or use the recommended piece size on the README.md file'
+        required: true
+        default: 'auto'
+      protocol_version:
+        description: 'BitTorrent Protocol version 1, 2, or hybrid'
+        required: true
+        type: string
+        default: '1'
+        options: ['1', '2', 'hybrid']
+      maximize_disk_space:
+        description: 'Maximize disk space. Check if getting out of disk space error'
+        type: boolean
+        default: false
+
+jobs:
+  seed-torrent:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Maximize disk space
+      if: inputs.maximize_disk_space == 'true'
+      uses: easimon/maximize-build-space@v10
+      with:
+        remove-dotnet: true
+        remove-android: true
+        remove-haskell: true
+        remove-codeql: true
+        remove-docker-images: true
+
+    - name: Download release assets
+      run: |
+        release_url="https://api.github.com/repos/${{ github.event.inputs.owner }}/${{ github.event.inputs.repo }}/releases/tags/${{ github.event.inputs.release_tag }}"
+        asset_urls=$(curl -s "$release_url" | grep "browser_download_url" | cut -d '"' -f 4)
+        for url in $asset_urls; do
+          curl -L -O "$url"
+        done
+    
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y p7zip-full vsftpd
+    
+    - name: Unzip assets
+      run: |
+        mkdir -p unzipped
+        for file in $(ls); do
+          if [[ "$file" == *.001 ]]; then
+            7z x "$file" -ounzipped
+          fi
+        done
+        
+    - name: Setup torrenttools
+      uses: AnimMouse/setup-appimage@v1
+      with:
+        name: torrenttools
+        url: https://github.com/fbdtemme/torrenttools/releases/download/v0.6.2/torrenttools-0.6.2-linux-x86_64.AppImage   
+      
+    - name: Create torrent using torrenttools
+      run: |
+        torrenttools create \
+          -v "${{ github.event.inputs.protocol_version }}" \
+          -o "${{ github.event.inputs.file_name }}.torrent" \
+          -c "${{ github.event.inputs.comment }}" \
+          -l "${{ github.event.inputs.piece_size }}" \
+          -s "torrent-creator" \
+          unzipped
+        
+    - name: Upload torrent artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: torrent.torrent
+        path: ${{ github.event.inputs.file_name }}.torrent
+        
+    - name: Setup FTP server
+      run: |
+        sudo mkdir -p /srv/ftp/upload
+        sudo chown nobody:nogroup /srv/ftp/upload
+        
+        echo "anonymous_enable=YES" | sudo tee -a /etc/vsftpd.conf
+        echo "anon_root=/srv/ftp/upload" | sudo tee -a /etc/vsftpd.conf
+        echo "anon_upload_enable=YES" | sudo tee -a /etc/vsftpd.conf
+        echo "anon_mkdir_write_enable=YES" | sudo tee -a /etc/vsftpd.conf
+        echo "write_enable=YES" | sudo tee -a /etc/vsftpd.conf
+        echo "local_enable=YES" | sudo tee -a /etc/vsftpd.conf
+        echo "chown_uploads=YES" | sudo tee -a /etc/vsftpd.conf
+        echo "chown_username=nobody" | sudo tee -a /etc/vsftpd.conf
+        echo "ftpd_banner=Welcome to the FTP server" | sudo tee -a /etc/vsftpd.conf
+        
+        sudo systemctl restart vsftpd
+        
+        sudo cp -r unzipped/* /srv/ftp/upload/
+        
+    - name: Display FTP server info
+      run: |
+        echo "FTP server is running."
+        echo "You can connect using the following details:"
+        echo "Server: $(hostname -I | awk '{print $1}')"
+        echo "Port: 21"
+        echo "Username: anonymous"
+        echo "Password: (leave blank)"
+        
+    - name: Keep FTP server running
+      run: tail -f /dev/null
