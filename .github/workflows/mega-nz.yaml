@@ -30,51 +30,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Determine Linux distribution
-      id: distro
-      run: |
-        if [ -f /etc/os-release ]; then
-          . /etc/os-release
-          echo "id=$ID" >> $GITHUB_OUTPUT
-          echo "version=$VERSION_ID" >> $GITHUB_OUTPUT
-        else
-          echo "id=unknown" >> $GITHUB_OUTPUT
-          echo "version=unknown" >> $GITHUB_OUTPUT
-        fi
-
-    - name: Install MEGAcmd for Ubuntu
-      if: steps.distro.outputs.id == 'ubuntu'
+    - name: Install MEGAcmd
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget
-        wget https://mega.nz/linux/MEGAsync/xUbuntu_${{ steps.distro.outputs.version }}/amd64/megacmd-xUbuntu_${{ steps.distro.outputs.version }}_amd64.deb
-        sudo dpkg -i megacmd-xUbuntu_${{ steps.distro.outputs.version }}_amd64.deb
-
-    - name: Install MEGAcmd for Debian
-      if: steps.distro.outputs.id == 'debian'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget
-        wget https://mega.nz/linux/MEGAsync/Debian_${{ steps.distro.outputs.version }}/amd64/megacmd-Debian_${{ steps.distro.outputs.version }}_amd64.deb
-        sudo dpkg -i megacmd-Debian_${{ steps.distro.outputs.version }}_amd64.deb
-
-    - name: Install MEGAcmd for CentOS
-      if: steps.distro.outputs.id == 'centos'
-      run: |
-        sudo yum install -y epel-release
-        sudo yum install -y https://mega.nz/linux/MEGAsync/CentOS_${{ steps.distro.outputs.version }}/x86_64/megacmd-CentOS_${{ steps.distro.outputs.version }}.x86_64.rpm
-
-    - name: Install MEGAcmd for Fedora
-      if: steps.distro.outputs.id == 'fedora'
-      run: |
-        sudo dnf install -y https://mega.nz/linux/MEGAsync/Fedora_${{ steps.distro.outputs.version }}/x86_64/megacmd-Fedora_${{ steps.distro.outputs.version }}.x86_64.rpm
+        sudo apt-get install -y wget lsb-release
+        UBUNTU_VERSION=$(lsb_release -rs)
+        wget "https://mega.nz/linux/repo/xUbuntu_${UBUNTU_VERSION}/amd64/megacmd-xUbuntu_${UBUNTU_VERSION}_amd64.deb"
+        sudo apt install -y "./megacmd-xUbuntu_${UBUNTU_VERSION}_amd64.deb"
 
     - name: Verify MEGAcmd installation
       run: mega-version
-
-    - name: Install additional dependencies
-      run: |
-        sudo apt-get install -y coreutils
         
     - name: Download from MEGA.nz
       run: |
