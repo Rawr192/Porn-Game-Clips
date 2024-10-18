@@ -46,7 +46,7 @@ jobs:
       if: steps.distro.outputs.id == 'ubuntu'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libc-ares2 libcrypto++6 libmediainfo0v5 libzen0v5 wget
+        sudo apt-get install -y wget
         wget https://mega.nz/linux/MEGAsync/xUbuntu_${{ steps.distro.outputs.version }}/amd64/megacmd-xUbuntu_${{ steps.distro.outputs.version }}_amd64.deb
         sudo dpkg -i megacmd-xUbuntu_${{ steps.distro.outputs.version }}_amd64.deb
 
@@ -54,7 +54,7 @@ jobs:
       if: steps.distro.outputs.id == 'debian'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libc-ares2 libcrypto++6 libmediainfo0v5 libzen0v5 wget
+        sudo apt-get install -y wget
         wget https://mega.nz/linux/MEGAsync/Debian_${{ steps.distro.outputs.version }}/amd64/megacmd-Debian_${{ steps.distro.outputs.version }}_amd64.deb
         sudo dpkg -i megacmd-Debian_${{ steps.distro.outputs.version }}_amd64.deb
 
