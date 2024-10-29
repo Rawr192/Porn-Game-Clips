@@ -54,6 +54,7 @@ jobs:
     - name: Process and upload files
       run: |
         shopt -s nullglob
+        gh release create mega-downloads --title "mega-downloads" --notes "mega-downloads" || true
         for file in *; do
           if [[ -f "$file" ]]; then
             filesize=$(stat -c%s "$file")
