@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mega_urls:
-        description: 'MEGA.nz URLs to download (up to 5, separated by commas)'
+        description: 'MEGA.nz URLs to download (up to 5, separated by commas or spaces)'
         required: true
       maximize_disk_space:
         description: Maximize disk space. Check if getting out of disk space error
@@ -43,8 +43,9 @@ jobs:
         
     - name: Download from MEGA.nz
       run: |
-        IFS=',' read -ra URLS <<< "${{ inputs.mega_urls }}"
-        for url in "${URLS[@]}"; do
+        # Replace commas with spaces, then split on spaces
+        URLS=$(echo "${{ inputs.mega_urls }}" | tr ',' ' ')
+        for url in $URLS; do
           mega-get "$url"
         done
     
