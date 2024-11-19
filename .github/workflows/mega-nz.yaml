@@ -60,38 +60,15 @@ jobs:
           if [[ -f "$file" ]]; then
             # Sanitize the file name
             sanitized_file=$(echo "$file" | sed 's/[^a-zA-Z0-9._-]/_/g')
-            if [ "$file"!= "$sanitized_file" ]; then
+
+            # If the sanitized file name is different, rename the file
+            if [ "$file" != "$sanitized_file" ]; then
               mv "$file" "$sanitized_file"
-              file="$sanitized_file"
             fi
 
-            # Check if the file already exists in the release
-            while gh release view mega-downloads --json assets | jq -e ".assets[] | select(.name == \"$file\")" > /dev/null; do
-              # Rename the file by appending a number
-              base="${file%.*}"
-              ext="${file##*.}"
-              count=1
-              new_file="${base}_$count.$ext"
-              while [[ -f "$new_file" ]]; do
-                count=$((count + 1))
-                new_file="${base}_$count.$ext"
-              done
-              mv "$file" "$new_file"
-              file="$new_file"
-            done
-
-            filesize=$(stat -c%s "$file")
-            if [ "$filesize" -gt 2000000000 ]; then
-              split -b 2000m "$file" "${file}."
-              for part in "${file}."*; do
-                echo "Uploading $part"
-                gh release upload "mega-downloads" "$part" --clobber
-              done
-              rm "$file"
-            else
-              echo "Uploading $file"
-              gh release upload "mega-downloads" "./$file" --clobber
-            fi
+            # Upload the file
+            echo "Uploading $sanitized_file"
+            gh release upload "mega-downloads" "./$sanitized_file" --clobber
           fi
         done
       env:
