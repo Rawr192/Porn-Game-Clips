@@ -74,13 +74,21 @@ jobs:
             # Check file size and split if larger than 2GB
             filesize=$(stat -c%s "$file")
             if [ "$filesize" -gt 2000000000 ]; then
-              split -b 2000m "$file" "${file}."
-              for part in "${file}".*; do
+              split -b 2000m "$file" "${new_name}.part_"
+              for part in "${new_name}.part_"*; do
                 # Ensure the correct file size and Content-Length are set
                 part_size=$(stat -c%s "$part")
                 part_new_name="${new_name}.${part##*.}"
+
+                # Check if the part name already exists in the GitHub release
+                while gh release view mega-downloads --json assets --jq ".assets[].name" | grep -q "$part_new_name"; do
+                  random_name=$(uuidgen)
+                  new_name="${random_name}.${extension}"
+                  part_new_name="${new_name}.${part##*.}"
+                done
+
                 echo "Uploading $part ($part_size bytes) as $part_new_name"
-                gh release upload "mega-downloads" "./$part" --clobber
+                gh release upload "mega-downloads" "./$part" --clobber --name "$part_new_name"
               done
             else
               # Rename the file
