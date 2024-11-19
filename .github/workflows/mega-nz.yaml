@@ -58,17 +58,17 @@ jobs:
         gh release create mega-downloads --title "mega-downloads" --notes "mega-downloads" || true
         for file in *; do
           if [[ -f "$file" ]]; then
-            # Sanitize the file name
-            sanitized_file=$(echo "$file" | sed 's/[^a-zA-Z0-9._-]/_/g')
-
-            # If the sanitized file name is different, rename the file
-            if [ "$file" != "$sanitized_file" ]; then
-              mv "$file" "$sanitized_file"
-            fi
-
+            # Extract file extension
+            extension="${file##*.}"
+            # Generate a random file name
+            random_name=$(uuidgen)
+            # Combine the random name with the original file extension
+            new_name="${random_name}.${extension}"
+            # Rename the file
+            mv "$file" "$new_name"
             # Upload the file
-            echo "Uploading $sanitized_file"
-            gh release upload "mega-downloads" "./$sanitized_file" --clobber
+            echo "Uploading $new_name"
+            gh release upload "mega-downloads" "./$new_name" --clobber
           fi
         done
       env:
