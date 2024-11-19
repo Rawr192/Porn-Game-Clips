@@ -72,7 +72,7 @@ jobs:
             done
 
             # Check file size and split if larger than 2GB
-            if [ $(stat -c%s "$file") -gt $((2 * 1024 * 1024 * 1024)) ]; then
+            if [ $(stat -c%s "$file") -gt $((2 * 1024 * 1024)) ]; then
               split -b 2G "$file" "${new_name}.part_"
               for part in ${new_name}.part_*; do
                 # Ensure the correct file size and Content-Length are set
