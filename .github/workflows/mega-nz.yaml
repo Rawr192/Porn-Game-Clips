@@ -75,7 +75,7 @@ jobs:
             filesize=$(stat -c%s "$file")
             if [ "$filesize" -gt 2000000000 ]; then
               split -b 2000m "$file" "${file}."
-              for part in ${file}.*; do
+              for part in "${file}".*; do
                 # Ensure the correct file size and Content-Length are set
                 part_size=$(stat -c%s "$part")
                 part_new_name="${new_name}.${part##*.}"
