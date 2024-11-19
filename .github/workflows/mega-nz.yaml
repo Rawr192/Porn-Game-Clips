@@ -52,12 +52,19 @@ jobs:
     - name: List files
       run: ls -la
 
-    - name: Process and upload files
+    - name: Sanitize and upload files
       run: |
         shopt -s nullglob
         gh release create mega-downloads --title "mega-downloads" --notes "mega-downloads" || true
         for file in *; do
           if [[ -f "$file" ]]; then
+            # Sanitize the file name
+            sanitized_file=$(echo "$file" | sed 's/[^a-zA-Z0-9._-]/_/g')
+            if [ "$file"!= "$sanitized_file" ]; then
+              mv "$file" "$sanitized_file"
+              file="$sanitized_file"
+            fi
+
             # Check if the file already exists in the release
             while gh release view mega-downloads --json assets | jq -e ".assets[] | select(.name == \"$file\")" > /dev/null; do
               # Rename the file by appending a number
