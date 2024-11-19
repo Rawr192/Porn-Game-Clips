@@ -58,6 +58,21 @@ jobs:
         gh release create mega-downloads --title "mega-downloads" --notes "mega-downloads" || true
         for file in *; do
           if [[ -f "$file" ]]; then
+            # Check if the file already exists in the release
+            while gh release view mega-downloads --json assets | jq -e ".assets[] | select(.name == \"$file\")" > /dev/null; do
+              # Rename the file by appending a number
+              base="${file%.*}"
+              ext="${file##*.}"
+              count=1
+              new_file="${base}_$count.$ext"
+              while [[ -f "$new_file" ]]; do
+                count=$((count + 1))
+                new_file="${base}_$count.$ext"
+              done
+              mv "$file" "$new_file"
+              file="$new_file"
+            done
+
             filesize=$(stat -c%s "$file")
             if [ "$filesize" -gt 2000000000 ]; then
               split -b 2000m "$file" "${file}."
