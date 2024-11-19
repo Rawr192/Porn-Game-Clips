@@ -75,14 +75,17 @@ jobs:
             if [ $(stat -c%s "$file") -gt $((2 * 1024 * 1024 * 1024)) ]; then
               split -b 2G "$file" "${new_name}.part_"
               for part in ${new_name}.part_*; do
-                echo "Uploading $part"
+                # Ensure the correct file size and Content-Length are set
+                part_size=$(stat -c%s "$part")
+                echo "Uploading $part ($part_size bytes)"
                 gh release upload "mega-downloads" "./$part" --clobber
               done
             else
               # Rename the file
               mv "$file" "$new_name"
               # Upload the file
-              echo "Uploading $new_name"
+              file_size=$(stat -c%s "$new_name")
+              echo "Uploading $new_name ($file_size bytes)"
               gh release upload "mega-downloads" "./$new_name" --clobber
             fi
           fi
