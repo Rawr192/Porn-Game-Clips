@@ -64,6 +64,13 @@ jobs:
             random_name=$(uuidgen)
             # Combine the random name with the original file extension
             new_name="${random_name}.${extension}"
+
+            # Check if the new name already exists in the GitHub release
+            while gh release view mega-downloads --json assets --jq ".assets[].name" | grep -q "$new_name"; do
+              random_name=$(uuidgen)
+              new_name="${random_name}.${extension}"
+            done
+
             # Rename the file
             mv "$file" "$new_name"
             # Upload the file
