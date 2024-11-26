@@ -26,6 +26,9 @@ jobs:
         remove-haskell: true
         remove-codeql: true
         remove-docker-images: true
+        
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
     - name: Install MEGAcmd
       run: |
