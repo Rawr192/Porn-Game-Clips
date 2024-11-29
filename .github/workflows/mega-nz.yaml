@@ -62,6 +62,7 @@ jobs:
         rm -f p.py
         rm -f test.py
         rm -f test2.py
+        rm -f "megacmd-xUbuntu_${UBUNTU_VERSION}_amd64.deb"
 
     - name: Sanitize, split, and upload files
       run: |
@@ -84,7 +85,7 @@ jobs:
 
             # Check file size and split if larger than 2GB
             filesize=$(stat -c%s "$file")
-            if [ "$filesize" -gt 2000000000 ]; then
+            if [ "$filesize" -gt 2000000000]; then
               split -b 2000m "$file" "${new_name}.part_"
               for part in "${new_name}.part_"*; do
                 # Ensure the correct file size and Content-Length are set
