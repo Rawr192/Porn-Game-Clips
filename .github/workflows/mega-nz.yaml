@@ -62,7 +62,8 @@ jobs:
         rm -f p.py 
         rm -f test.py 
         rm -f test2.py 
-        rm -f "megacmd-xUbuntu_${UBUNTU_VERSION}_amd64.deb"
+        MEGACMD_DEB="megacmd-xUbuntu_${UBUNTU_VERSION}_amd64.deb" 
+        rm -f "$MEGACMD_DEB"
 
     - name: Sanitize, split, and upload files
       run: |
