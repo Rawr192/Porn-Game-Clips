@@ -33,6 +33,17 @@ jobs:
         aria2c -x 16 -s 16 -i asset_urls.txt
       env:
         GITHUB_TOKEN: ${{ secrets.PAT }}
+
+    - name: Delete specified files 
+      run: | 
+        rm -f LICENSE 
+        rm -f "Piece Size Table.csv" 
+        rm -f README.md 
+        rm -f index.html 
+        rm -f link.url 
+        rm -f p.py 
+        rm -f test.py 
+        rm -f test2.py
     
     - name: List downloaded files
       run: ls -la
