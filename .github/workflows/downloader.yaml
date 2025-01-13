@@ -33,14 +33,14 @@ jobs:
     - name: Install necessary tools
       run: |
         sudo apt-get update 
-        sudo apt-get install -y wget lsb-release curl
+        sudo apt-get install -y aria2 lsb-release curl
 
     - name: Download files
       run: |
         # Replace commas with spaces, then split on spaces
         URLS=$(echo "${{ inputs.file_urls }}" | tr ',' ' ')
         for url in $URLS; do
-          wget "$url"
+          aria2c -x 16 -s 16 "$url"
         done
     
     - name: List downloaded files
