@@ -10,6 +10,15 @@ jobs:
       contents: write
     
     steps:
+    - name: Maximize disk space
+      uses: easimon/maximize-build-space@v10
+      with:
+        remove-dotnet: true
+        remove-android: true
+        remove-haskell: true
+        remove-codeql: true
+        remove-docker-images: true
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
