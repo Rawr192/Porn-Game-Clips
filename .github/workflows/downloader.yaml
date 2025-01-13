@@ -1,0 +1,112 @@
+name: Download from URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_urls:
+        description: 'URLs to download (up to 5, separated by commas or spaces)'
+        required: true
+      maximize_disk_space:
+        description: Maximize disk space. Check if getting out of disk space error
+        type: boolean
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Maximize disk space
+      if: inputs.maximize_disk_space
+      uses: easimon/maximize-build-space@v10
+      with:
+        remove-dotnet: true
+        remove-android: true
+        remove-haskell: true
+        remove-codeql: true
+        remove-docker-images: true
+        
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install necessary tools
+      run: |
+        sudo apt-get update 
+        sudo apt-get install -y wget lsb-release curl
+
+    - name: Download files
+      run: |
+        # Replace commas with spaces, then split on spaces
+        URLS=$(echo "${{ inputs.file_urls }}" | tr ',' ' ')
+        for url in $URLS; do
+          wget "$url"
+        done
+    
+    - name: List downloaded files
+      run: ls -la
+
+    - name: Delete specified files 
+      run: | 
+        rm -f LICENSE 
+        rm -f "Piece Size Table.csv" 
+        rm -f README.md 
+        rm -f index.html 
+        rm -f link.url 
+        rm -f p.py 
+        rm -f test.py 
+        rm -f test2.py 
+
+    - name: Sanitize, split, and upload files
+      run: |
+        shopt -s nullglob
+        gh release create mega-downloads --title "mega-downloads" --notes "mega-downloads" || true
+        for file in *; do
+          if [[ -f "$file" && "$file" != "README.md" && "$file" != ".github" && "$file" != ".gitignore" ]]; then
+            # Extract file extension
+            extension="${file##*.}"
+            # Generate a random file name
+            random_name=$(uuidgen)
+            # Combine the random name with the original file extension
+            new_name="${random_name}.${extension}"
+
+            # Check if the new name already exists in the GitHub release
+            while gh release view mega-downloads --json assets --jq ".assets[].name" | grep -q "$new_name"; do
+              random_name=$(uuidgen)
+              new_name="${random_name}.${extension}"
+            done
+
+            # Check file size and split if larger than 2GB
+            filesize=$(stat -c%s "$file")
+            if [ "$filesize" -gt 2000000000 ]; then
+              split -b 2000m "$file" "${new_name}.part_"
+              for part in "${new_name}.part_"*; do
+                # Ensure the correct file size and Content-Length are set
+                part_size=$(stat -c%s "$part")
+                part_new_name="${new_name}.${part##*.}"
+
+                # Check if the part name already exists in the GitHub release
+                while gh release view mega-downloads --json assets --jq ".assets[].name" | grep -q "$part_new_name"; do
+                  random_name=$(uuidgen)
+                  new_name="${random_name}.${extension}"
+                  part_new_name="${new_name}.${part##*.}"
+                done
+
+                echo "Uploading $part ($part_size bytes) as $part_new_name"
+                gh release upload "mega-downloads" "./$part" --clobber
+              done
+            else
+              # Rename the file
+              mv "$file" "$new_name"
+              # Upload the file
+              file_size=$(stat -c%s "$new_name")
+              echo "Uploading $new_name ($file_size bytes)"
+              gh release upload "mega-downloads" "./$new_name" --clobber
+            fi
+          fi
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+
+    - name: List files after processing
+      run: ls -la
