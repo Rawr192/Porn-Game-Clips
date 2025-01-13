@@ -31,6 +31,8 @@ jobs:
       run: |
         gh release view file-downloads --json assets --jq '.assets[].url' > asset_urls.txt
         aria2c -x 16 -s 16 -i asset_urls.txt
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
     
     - name: List downloaded files
       run: ls -la
@@ -84,9 +86,9 @@ jobs:
           fi
         done
       env:
-        GH_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
 
     - name: List files after processing
       run: ls -la
       env:
-        GH_TOKEN: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
