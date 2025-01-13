@@ -44,6 +44,7 @@ jobs:
         rm -f p.py 
         rm -f test.py 
         rm -f test2.py
+        rm -f asset_urls.txt
     
     - name: List downloaded files
       run: ls -la
