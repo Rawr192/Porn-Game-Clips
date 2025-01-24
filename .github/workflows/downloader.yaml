@@ -1,10 +1,10 @@
-name: Download from URL
+name: Download Videos from URLs
 
 on:
   workflow_dispatch:
     inputs:
-      file_urls:
-        description: 'URLs to download (up to 5, separated by commas or spaces)'
+      video_urls:
+        description: 'URLs of pages containing videos (separated by commas)'
         required: true
       maximize_disk_space:
         description: Maximize disk space. Check if getting out of disk space error
@@ -33,15 +33,54 @@ jobs:
     - name: Install necessary tools
       run: |
         sudo apt-get update 
-        sudo apt-get install -y aria2 lsb-release curl
+        sudo apt-get install -y aria2 lsb-release curl python3-pip
+        pip3 install requests beautifulsoup4
 
-    - name: Download files
+    - name: Extract video URLs and download
       run: |
-        # Replace commas with spaces, then split on spaces
-        URLS=$(echo "${{ inputs.file_urls }}" | tr ',' ' ')
-        for url in $URLS; do
-          aria2c -x 16 -s 16 "$url"
-        done
+        python3 - << EOF
+        import requests
+        from bs4 import BeautifulSoup
+        import subprocess
+        import sys
+
+        def extract_video_url(url):
+            try:
+                response = requests.get(url)
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                for meta in soup.find_all('meta', property=['og:video', 'og:video:url', 'og:video:secure_url']):
+                    video_url = meta.get('content')
+                    if video_url:
+                        return video_url
+                
+                print(f"No video URL found for {url}")
+                return None
+            except Exception as e:
+                print(f"Error processing {url}: {str(e)}")
+                return None
+
+        urls = "${{ inputs.video_urls }}".split(',')
+        video_urls = []
+        for url in urls:
+            url = url.strip()
+            if url:
+                print(f"Processing: {url}")
+                video_url = extract_video_url(url)
+                if video_url:
+                    video_urls.append(video_url)
+
+        if video_urls:
+            with open('video_urls.txt', 'w') as f:
+                for url in video_urls:
+                    f.write(f"{url}\n")
+            
+            print("Downloading videos...")
+            subprocess.run(['aria2c', '--file-allocation=none', '--force-sequential=true', '-i', 'video_urls.txt', '-x', '16', '-s', '16'], check=True)
+        else:
+            print("No video URLs found to download")
+            sys.exit(1)
+        EOF
     
     - name: List downloaded files
       run: ls -la
@@ -63,29 +102,22 @@ jobs:
         gh release create mega-downloads --title "mega-downloads" --notes "mega-downloads" || true
         for file in *; do
           if [[ -f "$file" && "$file" != "README.md" && "$file" != ".github" && "$file" != ".gitignore" ]]; then
-            # Extract file extension
             extension="${file##*.}"
-            # Generate a random file name
             random_name=$(uuidgen)
-            # Combine the random name with the original file extension
             new_name="${random_name}.${extension}"
 
-            # Check if the new name already exists in the GitHub release
             while gh release view mega-downloads --json assets --jq ".assets[].name" | grep -q "$new_name"; do
               random_name=$(uuidgen)
               new_name="${random_name}.${extension}"
             done
 
-            # Check file size and split if larger than 2GB
             filesize=$(stat -c%s "$file")
             if [ "$filesize" -gt 2000000000 ]; then
               split -b 2000m "$file" "${new_name}.part_"
               for part in "${new_name}.part_"*; do
-                # Ensure the correct file size and Content-Length are set
                 part_size=$(stat -c%s "$part")
                 part_new_name="${new_name}.${part##*.}"
 
-                # Check if the part name already exists in the GitHub release
                 while gh release view mega-downloads --json assets --jq ".assets[].name" | grep -q "$part_new_name"; do
                   random_name=$(uuidgen)
                   new_name="${random_name}.${extension}"
@@ -96,9 +128,7 @@ jobs:
                 gh release upload "mega-downloads" "./$part" --clobber
               done
             else
-              # Rename the file
               mv "$file" "$new_name"
-              # Upload the file
               file_size=$(stat -c%s "$new_name")
               echo "Uploading $new_name ($file_size bytes)"
               gh release upload "mega-downloads" "./$new_name" --clobber
